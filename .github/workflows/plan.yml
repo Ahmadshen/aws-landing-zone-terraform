@@ -1,0 +1,31 @@
+# Optional: a real `terraform plan` against your management account using
+# GitHub OIDC (no long-lived AWS keys). Skipped unless the repo variable
+# AWS_PLAN_ROLE_ARN is set. See README → "Plan in CI with OIDC".
+name: Plan
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  plan:
+    if: vars.AWS_PLAN_ROLE_ARN != ''
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examples/complete
+    steps:
+      - uses: actions/checkout@v5
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.2
+      - run: terraform init -input=false
+      - run: terraform plan -input=false -lock=false -var-file=ci.tfvars
